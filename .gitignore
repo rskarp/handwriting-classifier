@@ -1,0 +1,9 @@
+.git
+.DS_Store
+._.DS_Store
+**/.DS_Store
+**/._.DS_Store
+
+# Ignore the Dataset folder since it's so large
+Dataset/*
+Dataset.zip
