@@ -7,3 +7,7 @@
 # Ignore the Dataset folder since it's so large
 Dataset/*
 Dataset.zip
+
+# Ignore MATLAB autosave temp files
+*.asv
+*.m~
