@@ -13,7 +13,7 @@ OutputFeaturesFilePath = 'Features/train_features.mat';
 % Boolean: Set to 1 to display plots for every image, else 0
 showPlots = 1;
 % Boolean: Set to 1 to save features to .mat file, else 0
-saveFeatures = 1;
+saveFeatures = 0;
 % Boolean: Set to 1 if training data (labels are known), else set to 0
 train = 1;
 
