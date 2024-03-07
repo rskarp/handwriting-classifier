@@ -160,6 +160,7 @@ for i = 1:length(data)
         % Add metadata
         obj.FullImage = objectsImage;
         obj.LetterImage = padarray(obj.Image,[1 1],0,'both');
+        obj.HuMoments = hu_moments(obj.LetterImage);
         obj.Filename = filename;
         obj.Name = data(i,2);
         if ~isempty(identity) && length(finalObjects) == strlength(identity)
