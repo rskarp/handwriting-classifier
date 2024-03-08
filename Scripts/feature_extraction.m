@@ -71,6 +71,11 @@ for i = 1:length(data)
     objects = allObjects(arrayfun(@(x) x.ConvexArea > 20 && x.ConvexArea < 300 &&...
         (abs(x.Orientation) > 10 || x.MajorAxisLength/x.MinorAxisLength < 2),allObjects));
 
+    % Continue if no objects meet criteria (bad data)
+    if length(objects) < 1
+        continue;
+    end
+
     % Cluster objects into groups in the same line using basic sequential
     % clustering.
     % Note: this clustering step is specific to our dataset so we can
