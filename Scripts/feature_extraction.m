@@ -2,29 +2,31 @@
 close all;
 clear;
 
-
 % SCRIPT SETTINGS
-% File containing metadata (image file name, label)
-MetadataFilePath = 'Dataset/written_name_train_v2.csv';
-% Path to folder containing image data
-ImageDataPath = 'Dataset/train_v2/train/';
-% .mat file to save feature data to
-OutputFeaturesFilePath = 'Features/train_features.mat';
+% Type of data: 'train', 'validation' or 'test'
+ImageDataType = 'train';
 % Boolean: Set to 1 to display plots for every image, else 0
 showPlots = 1;
 % Boolean: Set to 1 to save features to .mat file, else 0
 saveFeatures = 0;
-% Boolean: Set to 1 if training data (labels are known), else set to 0
-train = 1;
+% Boolean: Set to 1 if labels are known (train/validation), else set to 0
+labelsKnown = 1;
 
+
+% File containing metadata (image file name, label)
+MetadataFilePath = ['Dataset/written_name_',ImageDataType,'_v2.csv'];
+% Path to folder containing image data
+ImageDataPath = ['Dataset/',ImageDataType,'_v2/',ImageDataType,'/'];
+% .mat file to save feature data to
+OutputFeaturesFilePath = ['Features/',ImageDataType,'_features.mat'];
 
 % Read in Training Metadata (filename, trueName)
-trainMeta = readmatrix(MetadataFilePath,'OutputType','string');
+meta = readmatrix(MetadataFilePath,'OutputType','string');
 % Remove column headers
-trainMeta = trainMeta(2:length(trainMeta),:);
+meta = meta(2:length(meta),:);
 
 % Only use a few image files for now
-data = trainMeta(1:5,:);
+data = meta(1:5,:);
 
 % Initialize variables
 featuresData = {};
@@ -131,11 +133,11 @@ for i = 1:length(data)
     end
 
     % If training (label is known), get label
-    if train
+    if labelsKnown
         identity = data(i,2);
         identity = replace(erasePunctuation(identity)," ","");
     else
-        identity = "";
+        identity = '';
     end
 
     % If label is known (e.g. training) ensure  # objects = # characters
