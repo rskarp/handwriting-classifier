@@ -4,9 +4,9 @@ close all;
 clear;
 
 % Load features data
-trainFeatures = load('Features/train_features.mat').featuresData;
-validationFeatures = load('Features/validation_features.mat').featuresData;
-testFeatures = load('Features/test_features.mat').featuresData;
+trainFeatures = load('Features/train/train_features_1.mat').data;
+validationFeatures = load('Features/validation/validation_features_1.mat').data;
+testFeatures = load('Features/test/test_features_1.mat').data;
 
 %% All possible characters
 chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
@@ -26,7 +26,11 @@ for c=1:numClasses
     classData = trainData(trainLabels==c,:);
     classMean = mean(classData);
     means(:,c) = classMean';
-    covs(:,:,c) = cov(classData);
+    covar = cov(classData);
+    if anynan(covar)
+        covar = eye(numFeatures)*1e-10;
+    end
+    covs(:,:,c) = covar;
     P(c) = length(classData)/length(trainData);
 end
 
@@ -42,27 +46,39 @@ euclideanError = sum(validationLabels~=z)/length(z);
 fprintf('     Validation Error: %.4f \n', euclideanError)
 
 % Bayesian Classifier
-% fprintf('\nBayesian Classifier\n')
-% % Train
-% z = bayes_classifier(means,covs,P,trainData');
-% error = sum(trainLabels~=z)/length(z);
-% fprintf('     Training Error: %.4f \n', error)
-% % Validate
-% z = bayes_classifier(means,covs,P,validationData');
-% error = sum(validationLabels~=z)/length(z);
-% fprintf('     Validation Error: %.4f \n', error)
+fprintf('\nBayesian Classifier\n')
+% Train
+z = bayes_classifier(means,covs,P,trainData');
+error = sum(trainLabels~=z)/length(z);
+fprintf('     Training Error: %.4f \n', error)
+% Validate
+z = bayes_classifier(means,covs,P,validationData');
+error = sum(validationLabels~=z)/length(z);
+fprintf('     Validation Error: %.4f \n', error)
+
+% Naive Bayes Classifier
+fprintf('\nNaive Bayes Classifier\n')
+% Train
+Mdl = fitcnb(trainData,trainLabels);confusionchart(YTest,label)
+z = predict(Mdl,trainData);
+error = sum(trainLabels~=z')/length(z);
+fprintf('     Training Error: %.4f \n', error)
+% Validate
+z = predict(Mdl,validationData);
+error = sum(validationLabels~=z')/length(z);
+fprintf('     Validation Error: %.4f \n', error)
 
 % KNN Classifier
-% fprintf('\nKNN Classifier\n')
-% % Train
-% k = length(chars);
-% z = k_nn_classifier(trainData,trainLabels,k,trainData);
-% error = sum(trainLabels~=z)/length(z);
-% fprintf('     Training Error: %.4f \n', error)
-% % Test
-% z = k_nn_classifier(TrainData,TrainLabels_positive,k,TestData);
-% error = sum(TestLabels_positive~=z)/length(z);
-% fprintf('     Testing Error: %.4f \n', error)
+fprintf('\nKNN Classifier\n')
+% Train
+Mdl = fitcknn(trainData,trainLabels,'NumNeighbors',10);
+z = predict(Mdl,trainData);
+error = sum(trainLabels~=z')/length(z);
+fprintf('     Training Error: %.4f \n', error)
+% Validate
+z = predict(Mdl,validationData);
+error = sum(validationLabels~=z')/length(z);
+fprintf('     Validation Error: %.4f \n', error)
 
 % SVM Classifier
 
