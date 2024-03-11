@@ -10,48 +10,69 @@ close all;clear all;clc;
 pnameExtractedData = 'C:\Users\Shad\Documents\School\EN.525.670.81 Machine Learning for Signal Processing\handwriting-classifier\Features\';
 
 load([pnameExtractedData 'train_features.mat']);
+Test.Data = featuresData;
 
-DataSet1 = featuresData;
-Data1.HuMoments = [] ;
-Data1.Labels =[]; 
+load([pnameExtractedData 'test_features.mat']);
+Val.Data = featuresData;
 
-Num_Pics = length(DataSet1);
+load([pnameExtractedData 'validation_features.mat']);
+Train.Data = featuresData;
 
-for i = 1:Num_Pics 
-    
-    Data1.Labels{i} = DataSet1{i}.Letter;
+Test.Num_Pics = length(Test.Data);
+Train.Num_Pics = length(Train.Data);
+Val.Num_Pics = length(Val.Data);
 
-    Data1.HuMoments(i,:) = DataSet1{i}.HuMoments;
-
+%%
+ReduceIndex = 0;
+for i = 1:Test.Num_Pics
+    if Test.Data{i}.Letter == 'o' || Test.Data{i}.Letter == 's' 
+        %Test.Num_Pics = Test.Num_Pics -1; 
+        fprintf('----Notify----\n\n')
+        ReduceIndex = ReduceIndex+1; 
+    else
+        Test.Labels{i-ReduceIndex} = Test.Data{i}.Letter;
+        Test.HuMoments(i-ReduceIndex,:) = Test.Data{i}.HuMoments;
+    end
 end
-Data1.Labels = categorical(Data1.Labels); 
 
-% Seperate Data as test set or verification set with dividerand?: 
-TrainRatio = 0.7;
-ValRatio = 0.15;
-testRatio = 0.15;
+for i = 1:Train.Num_Pics
+    Train.Labels{i} = Train.Data{i}.Letter;
+    Train.HuMoments(i,:) = Train.Data{i}.HuMoments;
+end
 
-%[TrainInd,ValInd,TestInd] = dividerand(Num_Pics,TrainRatio,ValRatio,testRatio);
-%Use the first half of the data for training.
+ReduceIndex = 0;
+for i = 1:Val.Num_Pics
+    if Val.Data{i}.Letter == 'a' || Val.Data{i}.Letter == 'd' || Val.Data{i}.Letter == 'e' || Val.Data{i}.Letter == 'i' || Val.Data{i}.Letter == 'o' || Val.Data{i}.Letter == 't' 
+        %Val.Num_Pics = Val.Num_Pics -1; 
+        fprintf('----Notify----\n\n')
+        ReduceIndex = ReduceIndex+1; 
+    else
+        Val.Labels{i-ReduceIndex} = Val.Data{i}.Letter;
+        Val.HuMoments(i-ReduceIndex,:) = Val.Data{i}.HuMoments;
+    end
+end
 
-% Read in Data set 2: 
+%% Convert data into catagories: 
+Train.Labels = categorical(Train.Labels); 
+Test.Labels = categorical(Test.Labels); 
+Val.Labels = categorical(Val.Labels); 
 
 % Generic Input Data: 
 
 % Possible classes: 
     alphabet = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', ...
-            'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z','o','s'};
+            'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'};
     Classes = categorical(alphabet);
-%% Shad Initial Swag
+%% Create Nueral Network 
 
 % Create Network Layers: 
  layers = [
     featureInputLayer(8)          % Input layer for feature data with 8 features
-    fullyConnectedLayer(500)       % Fully connected layer with 10 neurons
-    reluLayer()                   % ReLU activation layer
+    fullyConnectedLayer(500)          % ReLU activation layer
+    reluLayer()  
     fullyConnectedLayer(100) 
     reluLayer()  
-    fullyConnectedLayer(28)        % Fully connected layer with 5 neurons
+    fullyConnectedLayer(26)        % Fully connected layer with 5 neurons
     softmaxLayer()                % Softmax layer for classification
     %classificationLayer()        % Classification output layer
 ];
@@ -63,25 +84,43 @@ net = layerGraph(layers);
 %plot(net)
 %analyzeNetwork(net)
 
+XTrain = Train.HuMoments;
+YTrain = Train.Labels;
 
-Options = trainingOptions('rmsprop',...
+XValidation = Val.HuMoments;
+YValidation = Val.Labels;
+
+
+% If you do not have GPU, comment this out: 
+    XTrain = gpuArray(XTrain);
+    Options = trainingOptions('rmsprop',...
     'ExecutionEnvironment', 'gpu', ...  
     'MiniBatchSize', 64, ...
-    'MaxEpochs', 10);
-
-XTrain = Data1.HuMoments(1:Num_Pics/2,:);
-YTrain = Data1.Labels(1:Num_Pics/2);
-XTrainGPU = gpuArray(XTrain);
-YTrainGPU = gpuArray(YTrain);
-
-
-netTrained = trainnet(XTrainGPU, YTrainGPU, layers, 'crossentropy', Options);
+    'MaxEpochs', 15,...
+    'ValidationData', {XValidation, YValidation'}, ...
+    'ValidationFrequency', 500, ...  % Validate every 5 epochs
+    'Verbose', true,...
+    Plots="training-progress",...
+    OutputNetwork = "best-validation-loss",...
+    InitialLearnRate = 0.01...
+    );  % Display training progress
+     
+%{
+   Else 
+    Options = trainingOptions('rmsprop',...
+    'MaxEpochs', 30,...
+    'ValidationData', {XValidation, YValidation}, ...
+    'ValidationFrequency', 5, ...  % Validate every 5 epochs
+    'Verbose', true,...  % Display training progress
+    );
+%}
+   
+netTrained = trainnet(XTrain, YTrain', layers, 'crossentropy', Options);
 
 analyzeNetwork(netTrained)
 
-
 %% Initial Testing
-Result = predict(netTrained,Data1.HuMoments((Num_Pics/2)+1:end,:));
+Result = predict(netTrained,Test.HuMoments);
 %Result = classify(netTrained,Data1.HuMoments((Num_Pics/2)+1:end,:));
 
 Correct = 0; 
@@ -94,10 +133,9 @@ end
 
 Result_Character = categorical(Result_Character);
 
-accuracy = sum(Result_Character == Data1.Labels((Num_Pics/2)+1:end)) / Num_Pics
+accuracy = sum(Result_Character == Test.Labels) / Test.Num_Pics
         
-confusionchart(Data1.Labels((Num_Pics/2)+1:end),Result_Character)
-
+confusionchart(Test.Labels,Result_Character)
 
 
 
