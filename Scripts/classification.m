@@ -72,7 +72,7 @@ filenames = unique(cellfun(@(x) x.Filename, trainFeatures));
 for i = 1:length(filenames)
     fname = filenames(i);
     % Get all letters in the file
-    letters = featuresData(cellfun(@(x) x.Filename==fname, trainFeatures));
+    letters = trainFeatures(cellfun(@(x) x.Filename==fname, trainFeatures));
     for l = 1:length(letters)
         % TODO: Classify each letter
     end
