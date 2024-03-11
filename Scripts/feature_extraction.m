@@ -193,7 +193,15 @@ fprintf('Elapsed time extracing features: %.4f\n',tCalcEnd);
 % Save features to file
 if saveFeatures
     fprintf('Saving features to file...\n');
-    save(OutputFeaturesFilePath,'featuresData','-v7.3');
+    % Only save up to 100,000 rows per file to keep file size manageable
+    numFiles = ceil(length(featuresData)/100000);
+    for i=1:numFiles
+        fname = [erase(OutputFeaturesFilePath,'.mat'), '_', num2str(i),'.mat'];
+        startIdx = (i-1)*100000 + 1;
+        endIdx = min(i*100000,length(featuresData));
+        data = featuresData(startIdx:endIdx);
+        save(fname,'data');
+    end
     tSaveEnd = toc(tStart);
     fprintf('Elapsed time saving features: %.4f\n',tSaveEnd-tCalcEnd);
 end
