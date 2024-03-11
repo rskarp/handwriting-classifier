@@ -79,8 +79,7 @@ fprintf('     Training Error: %.4f \n', error)
 z = predict(Mdl,validationData);
 error = sum(validationLabels~=z')/length(z);
 fprintf('     Validation Error: %.4f \n', error)
-
-% SVM Classifier
+% confusionchart(validationLabels,z)
 
 %% Test Unknown data using trained classifier
 filenames = unique(cellfun(@(x) x.Filename, trainFeatures));
