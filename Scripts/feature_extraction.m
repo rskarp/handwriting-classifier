@@ -21,7 +21,7 @@ MetadataFilePath = ['Dataset/written_name_',ImageDataType,'_v2.csv'];
 % Path to folder containing image data
 ImageDataPath = ['Dataset/',ImageDataType,'_v2/',ImageDataType,'/'];
 % .mat file to save feature data to
-OutputFeaturesFilePath = ['Features/',ImageDataType,'_features.mat'];
+OutputFeaturesFilePath = ['Features/',ImageDataType,'/',ImageDataType,'_features.mat'];
 
 % Read in Training Metadata (filename, trueName)
 meta = readmatrix(MetadataFilePath,'OutputType','string');
