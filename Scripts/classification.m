@@ -4,9 +4,9 @@ close all;
 clear;
 
 % Load features data
-trainFeatures = load('Features/train_features.mat').featuresData;
-validationFeatures = load('Features/validation_features.mat').featuresData;
-testFeatures = load('Features/test_features.mat').featuresData;
+trainFeatures = load('Features/train/train_features_1.mat').data;
+validationFeatures = load('Features/validation/validation_features_1.mat').data;
+testFeatures = load('Features/test/test_features_1.mat').data;
 
 %% All possible characters
 chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
@@ -15,6 +15,11 @@ chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 [trainData, trainLabels] = convertFeaturesToMatrix(trainFeatures, chars);
 [validationData, validationLabels] = convertFeaturesToMatrix(validationFeatures, chars);
 [testData, testLabels] = convertFeaturesToMatrix(testFeatures, chars);
+
+% Normalize feature columns
+trainData = normc(trainData);
+validationData = normc(validationData);
+testData = normc(testData);
 
 % Calculate statistics for Euclidean & Bayesian classifiers
 [N, numFeatures] = size(trainData);
@@ -26,7 +31,11 @@ for c=1:numClasses
     classData = trainData(trainLabels==c,:);
     classMean = mean(classData);
     means(:,c) = classMean';
-    covs(:,:,c) = cov(classData);
+    covar = cov(classData);
+    if anynan(covar)
+        covar = eye(numFeatures)*1e-10;
+    end
+    covs(:,:,c) = covar;
     P(c) = length(classData)/length(trainData);
 end
 
@@ -40,31 +49,76 @@ fprintf('     Training Error: %.4f \n', euclideanError)
 z=euclidean_classifier(means,validationData');
 euclideanError = sum(validationLabels~=z)/length(z);
 fprintf('     Validation Error: %.4f \n', euclideanError)
+% Test
+z=euclidean_classifier(means,testData');
+euclideanError = sum(testLabels~=z)/length(z);
+fprintf('     Test Error: %.4f \n', euclideanError)
 
 % Bayesian Classifier
-% fprintf('\nBayesian Classifier\n')
-% % Train
-% z = bayes_classifier(means,covs,P,trainData');
-% error = sum(trainLabels~=z)/length(z);
-% fprintf('     Training Error: %.4f \n', error)
-% % Validate
-% z = bayes_classifier(means,covs,P,validationData');
-% error = sum(validationLabels~=z)/length(z);
-% fprintf('     Validation Error: %.4f \n', error)
+fprintf('\nBayesian Classifier\n')
+% Train
+z = bayes_classifier(means,covs,P,trainData');
+error = sum(trainLabels~=z)/length(z);
+fprintf('     Training Error: %.4f \n', error)
+% Validate
+z = bayes_classifier(means,covs,P,validationData');
+error = sum(validationLabels~=z)/length(z);
+fprintf('     Validation Error: %.4f \n', error)
+% Test
+z = bayes_classifier(means,covs,P,testData');
+error = sum(testLabels~=z)/length(z);
+fprintf('     Test Error: %.4f \n', error)
+
+% Naive Bayes Classifier
+fprintf('\nNaive Bayes Classifier\n')
+% Train
+Mdl = fitcnb(trainData,trainLabels);
+z = predict(Mdl,trainData);
+error = sum(trainLabels~=z')/length(z);
+fprintf('     Training Error: %.4f \n', error)
+% Validate
+z = predict(Mdl,validationData);
+error = sum(validationLabels~=z')/length(z);
+fprintf('     Validation Error: %.4f \n', error)
+% Test
+z = predict(Mdl,testData);
+error = sum(testLabels~=z')/length(z);
+fprintf('     Test Error: %.4f \n', error)
 
 % KNN Classifier
-% fprintf('\nKNN Classifier\n')
-% % Train
-% k = length(chars);
-% z = k_nn_classifier(trainData,trainLabels,k,trainData);
-% error = sum(trainLabels~=z)/length(z);
-% fprintf('     Training Error: %.4f \n', error)
-% % Test
-% z = k_nn_classifier(TrainData,TrainLabels_positive,k,TestData);
-% error = sum(TestLabels_positive~=z)/length(z);
-% fprintf('     Testing Error: %.4f \n', error)
+fprintf('\nKNN Classifier\n')
+% Train
+Mdl = fitcknn(trainData,trainLabels,'NumNeighbors',10);
+zTrain = predict(Mdl,trainData);
+error = sum(trainLabels~=zTrain')/length(zTrain);
+fprintf('     Training Error: %.4f \n', error)
+% Validate
+zVal = predict(Mdl,validationData);
+error = sum(validationLabels~=zVal')/length(zVal);
+fprintf('     Validation Error: %.4f \n', error)
+% Test
+zTest = predict(Mdl,testData);
+error = sum(testLabels~=zTest')/length(zTest);
+fprintf('     Test Error: %.4f \n', error)
 
-% SVM Classifier
+% Plot Confusion Matrices for KNN Classifier
+toCaptialLetters = @(labels) categorical(labels,1:26,num2cell(chars(1:26)));
+
+trainLabs = toCaptialLetters(trainLabels);
+valLabs = toCaptialLetters(validationLabels);
+testLabs = toCaptialLetters(testLabels);
+zzTrain = toCaptialLetters(zTrain);
+zzVal = toCaptialLetters(zVal);
+zzTest = toCaptialLetters(zTest);
+allLabs = [trainLabs, valLabs, testLabs];
+zzAll = [zzTrain; zzVal; zzTest;];
+
+figure
+sgtitle('KNN Classifier Results');
+subplot(2,2,1); confusionchart(trainLabs,zzTrain,'Title','Train');
+subplot(2,2,2); confusionchart(valLabs,zzVal,'Title','Validate');
+subplot(2,2,3); confusionchart(testLabs,zzVal,'Title','Test');
+subplot(2,2,4); confusionchart(allLabs,zzAll,'Title','Overall');
 
 %% Test Unknown data using trained classifier
 filenames = unique(cellfun(@(x) x.Filename, trainFeatures));
@@ -72,7 +126,7 @@ filenames = unique(cellfun(@(x) x.Filename, trainFeatures));
 for i = 1:length(filenames)
     fname = filenames(i);
     % Get all letters in the file
-    letters = featuresData(cellfun(@(x) x.Filename==fname, trainFeatures));
+    letters = trainFeatures(cellfun(@(x) x.Filename==fname, trainFeatures));
     for l = 1:length(letters)
         % TODO: Classify each letter
     end

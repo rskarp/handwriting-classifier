@@ -11,14 +11,17 @@ showPlots = 1;
 saveFeatures = 0;
 % Boolean: Set to 1 if labels are known (train/validation), else set to 0
 labelsKnown = 1;
+% Boolean: Set to 1 if all data is capital letters (e.g. Kaggle dataset)
+% This is used to ensure the labels are correct.
+allCapitals = 1;
 
-
+tStart = tic;
 % File containing metadata (image file name, label)
 MetadataFilePath = ['Dataset/written_name_',ImageDataType,'_v2.csv'];
 % Path to folder containing image data
 ImageDataPath = ['Dataset/',ImageDataType,'_v2/',ImageDataType,'/'];
 % .mat file to save feature data to
-OutputFeaturesFilePath = ['Features/',ImageDataType,'_features.mat'];
+OutputFeaturesFilePath = ['Features/',ImageDataType,'/',ImageDataType,'_features.mat'];
 
 % Read in Training Metadata (filename, trueName)
 meta = readmatrix(MetadataFilePath,'OutputType','string');
@@ -136,6 +139,9 @@ for i = 1:length(data)
     if labelsKnown
         identity = data(i,2);
         identity = replace(erasePunctuation(identity)," ","");
+        if allCapitals
+            identity = upper(identity);
+        end
     else
         identity = '';
     end
@@ -162,10 +168,10 @@ for i = 1:length(data)
     for j=1:length(finalObjects)
         numFeatureObjs = numFeatureObjs + 1;
         obj = finalObjects(j);
-        objectsImage = false(size(Ithresh));
-        objectsImage(obj.PixelIdxList) = true;
+        [height,width] = size(Ithresh);
         % Add metadata
-        obj.FullImage = objectsImage;
+        obj.OriginalImageHeight = height;
+        obj.OriginalImageWidth = width;
         obj.LetterImage = padarray(obj.Image,[1 1],0,'both');
         obj.HuMoments = hu_moments(obj.LetterImage);
         obj.Filename = filename;
@@ -181,7 +187,21 @@ for i = 1:length(data)
     end
 end
 
+tCalcEnd = toc(tStart);
+fprintf('Elapsed time extracing features: %.4f\n',tCalcEnd);
+
 % Save features to file
 if saveFeatures
-    save(OutputFeaturesFilePath,'featuresData');
+    fprintf('Saving features to file...\n');
+    % Only save up to 100,000 rows per file to keep file size manageable
+    numFiles = ceil(length(featuresData)/100000);
+    for i=1:numFiles
+        fname = [erase(OutputFeaturesFilePath,'.mat'), '_', num2str(i),'.mat'];
+        startIdx = (i-1)*100000 + 1;
+        endIdx = min(i*100000,length(featuresData));
+        data = featuresData(startIdx:endIdx);
+        save(fname,'data');
+    end
+    tSaveEnd = toc(tStart);
+    fprintf('Elapsed time saving features: %.4f\n',tSaveEnd-tCalcEnd);
 end
