@@ -92,9 +92,9 @@ Val.Labels = categorical(Val.Labels);
 % Create Network Layers: 
  layers = [
     featureInputLayer(15)          % Input layer for feature data with 8 features
-    fullyConnectedLayer(500)          % ReLU activation layer
+    fullyConnectedLayer(100)          % ReLU activation layer
     reluLayer()  
-    fullyConnectedLayer(100) 
+    fullyConnectedLayer(50) 
     reluLayer()  
     fullyConnectedLayer(26)        % Fully connected layer with 5 neurons
     softmaxLayer()                % Softmax layer for classification
@@ -123,7 +123,7 @@ YValidation = Val.Labels;
     Options = trainingOptions('rmsprop',...
     'ExecutionEnvironment', 'gpu', ...  
     'MiniBatchSize', 128, ...
-    'MaxEpochs', 10,...
+    'MaxEpochs', 20,...
     'ValidationData', {XValidation, YValidation'}, ...
     'ValidationFrequency', 500, ...  % Validate every 5 epochs
     'Verbose', true,...
@@ -155,9 +155,9 @@ Correct = 0;
 letterNumber = zeros(1,length(alphabet)); 
 
 for i = 1:length(Result) 
-    Index = find(max(Result(i,:)) == Result(i,:));
+    Index = find(max(Result(i,:)) == Result(i,:),1);
     Result_Character(i) = alphabet(Index); 
-end
+end 
 
 Result_Character = categorical(Result_Character);
 
@@ -167,7 +167,7 @@ figure()
 confusionchart(Test.Labels,Result_Character)
 title('Confusion Chart -  All Image Metrics')
 
-save('Net_V3p0.mat','netTrained')
+save('Net_V3p2.mat','netTrained')
 
 
 

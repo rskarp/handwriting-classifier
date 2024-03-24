@@ -92,9 +92,9 @@ Val.Labels = categorical(Val.Labels);
 % Create Network Layers: 
  layers = [
     featureInputLayer(15)          % Input layer for feature data with 8 features
-    fullyConnectedLayer(500)          % ReLU activation layer
+    fullyConnectedLayer(100)          % ReLU activation layer
     reluLayer()  
-    fullyConnectedLayer(100) 
+    fullyConnectedLayer(50) 
     reluLayer()  
     fullyConnectedLayer(26)        % Fully connected layer with 5 neurons
     softmaxLayer()                % Softmax layer for classification
@@ -167,7 +167,7 @@ figure()
 confusionchart(Test.Labels,Result_Character)
 title('Confusion Chart -  All Image Metrics')
 
-save('Net_V3p0.mat','netTrained')
+save('Net_V3p1.mat','netTrained')
 
 
 
