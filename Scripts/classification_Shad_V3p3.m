@@ -92,8 +92,8 @@ save('Data_032624.Mat','Test','Train','Val','-v7.3')
     end
 
 % Change a hyper parameter: 
-    Parameter.Name = 'MiniBatchSize';
-    Parameter.Value = [512;1024;2048];
+    Parameter.Name = 'MaxEpochs';
+    Parameter.Value = [20;30;40;50];
 
 %% Create Nueral Network 
 for ChangeParameter = 1:length(Parameter.Value)
@@ -131,8 +131,8 @@ for ChangeParameter = 1:length(Parameter.Value)
         XTrain = gpuArray(XTrain);
         Options = trainingOptions('rmsprop',...
         'ExecutionEnvironment', 'gpu', ...  
-        'MiniBatchSize', Parameter.Value(ChangeParameter), ...
-        'MaxEpochs', 20,...
+        'MiniBatchSize', 2048, ...
+        'MaxEpochs', Parameter.Value(ChangeParameter),...
         'ValidationData', {XValidation, YValidation'}, ...
         'ValidationFrequency', 500, ...  % Validate every 5 epochs
         'Verbose', true,...
@@ -156,9 +156,10 @@ for ChangeParameter = 1:length(Parameter.Value)
     analyzeNetwork(netTrained{ChangeParameter})
 end
 
-%% Choose one: 
-    % save('Net_V3p2.mat','netTrained');
-    % load('Net_V3p2.mat');
+%% Choose one (highlight and press f9): 
+
+    % save('Net_V3p3.mat','netTrained');
+    % load('Net_V3p3.mat');
     
 %% Initial Testing
 close all
