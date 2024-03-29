@@ -1,27 +1,115 @@
 % Letter Classification Code
-% Testing Various Classifier types (Euclidean, Bayesian, KNN, SVM)
+% Testing Various Classifier types (Basic Neural Network, Euclidean, Bayesian, KNN, SVM)
 close all;
 clear;
 
 % Load features data
-trainFeatures = load('Features/train/train_features_1.mat').data;
-validationFeatures = load('Features/validation/validation_features_1.mat').data;
-testFeatures = load('Features/test/test_features_1.mat').data;
+trainFeatures = load_features("train");
+validationFeatures = load_features("validation");
+testFeatures = load_features("test");
 
 %% All possible characters
-chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+% chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
 % Convert features to matrix
-[trainData, trainLabels] = convertFeaturesToMatrix(trainFeatures, chars);
-[validationData, validationLabels] = convertFeaturesToMatrix(validationFeatures, chars);
-[testData, testLabels] = convertFeaturesToMatrix(testFeatures, chars);
+normalize = 1;
+[trainData, trainLabels, trainLetters, trainLabelMatrix] = ...
+    convertFeaturesToMatrix(trainFeatures, chars, normalize);
+[validationData, validationLabels, validationLetters, validationLabelMatrix] = ...
+    convertFeaturesToMatrix(validationFeatures, chars, normalize);
+[testData, testLabels, testLetters, testLabelMatrix] = ...
+    convertFeaturesToMatrix(testFeatures, chars, normalize);
 
-% Normalize feature columns
-trainData = normc(trainData);
-validationData = normc(validationData);
-testData = normc(testData);
+%% Train basic (shallow) neural network
+% Generated using nprtool
+x = [trainData' validationData' testData'];
+t = [trainLabelMatrix' validationLabelMatrix' testLabelMatrix'];
 
-% Calculate statistics for Euclidean & Bayesian classifiers
+trainFcn = 'trainscg';  % Scaled conjugate gradient backpropagation.
+
+% Create a Pattern Recognition Network
+hiddenLayerSize = [10 5];
+net = patternnet(hiddenLayerSize, trainFcn);
+
+% Setup Division of Data for Training, Validation, Testing
+nTrain = size(trainData,1);
+nVal = size(validationData,1);
+nTest = size(testData,1);
+net.divideFcn = 'divideind';
+net.divideParam.trainInd = 1:nTrain;
+net.divideParam.valInd = nTrain+1:nTrain+nVal;
+net.divideParam.testInd= nTrain+nVal+1:nTrain+nVal+nTest;
+
+% Train the Network
+[net,tr] = train(net,x,t);
+
+% Save the trained network
+basicNetworkResults.Network = net;
+basicNetworkResults.TrainingResults = tr;
+save('Results/basicNetworkResults_2.mat','basicNetworkResults');
+
+%% Test the basic network
+load('Results/basicNetworkResults.mat'); % Load trained network
+basicNet = basicNetworkResults.Network;
+tr = basicNetworkResults.TrainingResults;
+fprintf('\nBasic Neural Network Classifier\n')
+
+% Uncomment to View the Network
+% view(basicNet)
+
+% Train
+trainEst = basicNet(trainData');
+trainLabsInd = vec2ind(trainLabelMatrix');
+trainEstInd = vec2ind(trainEst);
+trainError = sum(trainLabsInd ~= trainEstInd)/numel(trainLabsInd);
+fprintf('     Training Error: %.4f \n', trainError)
+e = gsubtract(trainLabelMatrix',trainEst);
+performance = perform(basicNet,trainLabelMatrix',trainEst); % Mean-squared error
+% Uncomment these lines to enable various plots for training performance.
+% figure, plotperform(tr)
+% figure, plottrainstate(tr)
+% figure, ploterrhist(e)
+% figure, plotconfusion(trainLabelMatrix',trainEst)
+% figure, plotroc(trainLabelMatrix',trainEst)
+
+% Validate
+validEst = basicNet(validationData');
+validLabsInd = vec2ind(validationLabelMatrix');
+validEstInd = vec2ind(validEst);
+validError = sum(validLabsInd ~= validEstInd)/numel(validLabsInd);
+fprintf('     Validation Error: %.4f \n', validError)
+% Test
+testEst = basicNet(testData');
+testLabsInd = vec2ind(testLabelMatrix');
+testEstInd = vec2ind(testEst);
+testError = sum(testLabsInd ~= testEstInd)/numel(testLabsInd);
+fprintf('     Test Error: %.4f \n', testError)
+
+% Plot Confusion Matrices for Basic NN Classifier
+toCaptialLetters = @(labels) categorical(labels,1:26,num2cell(chars(1:26)));
+
+trainCat = toCaptialLetters(trainLabsInd);
+valCat = toCaptialLetters(validLabsInd);
+testCat = toCaptialLetters(testLabsInd);
+trainEstCat = toCaptialLetters(trainEstInd);
+valEstCat = toCaptialLetters(validEstInd);
+testEstCat = toCaptialLetters(testEstInd);
+allLabs = [trainCat, valCat, testCat];
+allEst = [trainEstCat, valEstCat, testEstCat];
+
+figure
+sgtitle('Basic Neural Network Classifier Results');
+subplot(2,2,1); confusionchart(trainCat,trainEstCat,'Title','Train',...
+    'ColumnSummary','column-normalized','RowSummary','row-normalized');
+subplot(2,2,2); confusionchart(valCat,valEstCat,'Title','Validate',...
+    'ColumnSummary','column-normalized','RowSummary','row-normalized');
+subplot(2,2,3); confusionchart(testCat,testEstCat,'Title','Test',...
+    'ColumnSummary','column-normalized','RowSummary','row-normalized');
+subplot(2,2,4); confusionchart(allLabs,allEst,'Title','Overall',...
+    'ColumnSummary','column-normalized','RowSummary','row-normalized');
+
+%% Calculate statistics for Euclidean & Bayesian classifiers
 [N, numFeatures] = size(trainData);
 numClasses = length(chars);
 means = zeros([numFeatures,numClasses]);
@@ -104,50 +192,18 @@ fprintf('     Test Error: %.4f \n', error)
 % Plot Confusion Matrices for KNN Classifier
 toCaptialLetters = @(labels) categorical(labels,1:26,num2cell(chars(1:26)));
 
-trainLabs = toCaptialLetters(trainLabels);
+trainLabelMatrix = toCaptialLetters(trainLabels);
 valLabs = toCaptialLetters(validationLabels);
 testLabs = toCaptialLetters(testLabels);
 zzTrain = toCaptialLetters(zTrain);
 zzVal = toCaptialLetters(zVal);
 zzTest = toCaptialLetters(zTest);
-allLabs = [trainLabs, valLabs, testLabs];
+allLabs = [trainLabelMatrix, valLabs, testLabs];
 zzAll = [zzTrain; zzVal; zzTest;];
 
 figure
 sgtitle('KNN Classifier Results');
-subplot(2,2,1); confusionchart(trainLabs,zzTrain,'Title','Train');
+subplot(2,2,1); confusionchart(trainLabelMatrix,zzTrain,'Title','Train');
 subplot(2,2,2); confusionchart(valLabs,zzVal,'Title','Validate');
-subplot(2,2,3); confusionchart(testLabs,zzVal,'Title','Test');
+subplot(2,2,3); confusionchart(testLabs,zzTest,'Title','Test');
 subplot(2,2,4); confusionchart(allLabs,zzAll,'Title','Overall');
-
-%% Test Unknown data using trained classifier
-filenames = unique(cellfun(@(x) x.Filename, trainFeatures));
-% Generate text string for each input data file
-for i = 1:length(filenames)
-    fname = filenames(i);
-    % Get all letters in the file
-    letters = trainFeatures(cellfun(@(x) x.Filename==fname, trainFeatures));
-    for l = 1:length(letters)
-        % TODO: Classify each letter
-    end
-end
-
-%% Function Definitions
-
-% Convert numeric feature data to matrix & get class labels
-function [data, labels] = convertFeaturesToMatrix(features, chars)
-    NUM_FEATURES = 19; % Update this if our features change
-    data = zeros([length(features),NUM_FEATURES]);
-    labels = zeros([1,length(features)]);
-    for i = 1:length(features)
-        obj = features{i};
-        row = [obj.Area, obj.Centroid(1), obj.Centroid(2), obj.MajorAxisLength,...
-            obj.MinorAxisLength, obj.Eccentricity, obj.Orientation, obj.ConvexArea,...
-            obj.Circularity, obj.Solidity, obj.Perimeter, obj.HuMoments];
-        class = strfind(chars,obj.Letter);
-        data(i,:) = row;
-        if ~isempty(class)
-            labels(i) = class;
-        end
-    end
-end
