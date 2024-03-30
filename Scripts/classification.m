@@ -13,13 +13,106 @@ testFeatures = load_features("test");
 chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
 % Convert features to matrix
-normalize = 1;
+normalize = 0;
 [trainData, trainLabels, trainLetters, trainLabelMatrix] = ...
     convertFeaturesToMatrix(trainFeatures, chars, normalize);
 [validationData, validationLabels, validationLetters, validationLabelMatrix] = ...
     convertFeaturesToMatrix(validationFeatures, chars, normalize);
 [testData, testLabels, testLetters, testLabelMatrix] = ...
     convertFeaturesToMatrix(testFeatures, chars, normalize);
+
+%% Deep Neural Network Classifier
+
+% Define Network Architecture
+numFeatures = size(trainData,2);
+numClasses = numel(unique(trainLabels));
+
+layers = [
+    featureInputLayer(numFeatures,Normalization="zscore")
+    fullyConnectedLayer(200)
+    batchNormalizationLayer
+    reluLayer
+    % dropoutLayer(0.2)
+    fullyConnectedLayer(100)
+    batchNormalizationLayer
+    reluLayer
+    % dropoutLayer(0.05)
+    fullyConnectedLayer(50)
+    batchNormalizationLayer
+    reluLayer
+    dropoutLayer(0.02)
+    fullyConnectedLayer(numClasses)
+    softmaxLayer];
+
+% Set training options
+Options = trainingOptions('adam',...
+    MaxEpochs=50,...
+    MiniBatchSize=4096, ...
+    LearnRateSchedule='piecewise',...
+    Metrics='accuracy',...
+    ValidationPatience=5,...
+    ... % ExecutionEnvironment='parallel-cpu',...
+    Shuffle='every-epoch',...
+    ValidationData={validationData, categorical(validationLetters)'}, ...
+    ValidationFrequency=500, ...  % Validate every 500 iterations
+    ... % Verbose=true,...  % Display training progress
+    Plots="training-progress",...
+    OutputNetwork = "best-validation-loss",...
+    InitialLearnRate = 0.01...
+);
+
+% Train the network
+dlNetwork = trainnet(trainData, categorical(trainLetters)', layers, 'crossentropy', Options);
+% analyzeNetwork(netTrained)
+% save('Results/Models/dlNetwork_7.mat','dlNetwork');
+
+%% Test the deep neural network
+% load('Results/Models/dlNetwork_6.mat');
+fprintf('\nDeep Neural Network Classifier\n')
+
+% Train
+trainScores = predict(dlNetwork,trainData);
+trainEst = arrayfun(@(i) find(trainScores(i,:)==max(trainScores(i,:))),1:size(trainScores,1));
+trainError = sum(trainLabels ~= trainEst)/numel(trainLabels);
+fprintf('     Training Error: %.4f \n', trainError)
+% Validate
+validScores = predict(dlNetwork,validationData);
+validEst = arrayfun(@(i) find(validScores(i,:)==max(validScores(i,:))),1:size(validScores,1));
+validError = sum(validationLabels ~= validEst)/numel(validationLabels);
+fprintf('     Validation Error: %.4f \n', validError)
+% Test
+testScores = predict(dlNetwork,testData);
+testEst = arrayfun(@(i) find(testScores(i,:)==max(testScores(i,:))),1:size(testScores,1));
+testError = sum(testLabels ~= testEst)/numel(testLabels);
+fprintf('     Test Error: %.4f \n', testError)
+
+% Plot Confusion Matrices for Deep NN Classifier
+toCaptialLetters = @(labels) categorical(labels,1:26,num2cell(chars(1:26)));
+
+trainCat = toCaptialLetters(trainLabels);
+valCat = toCaptialLetters(validationLabels);
+testCat = toCaptialLetters(testLabels);
+trainEstCat = toCaptialLetters(trainEst);
+valEstCat = toCaptialLetters(validEst);
+testEstCat = toCaptialLetters(testEst);
+allLabs = [trainCat, valCat, testCat];
+allEst = [trainEstCat, valEstCat, testEstCat];
+allError = sum(allLabs ~= allEst)/numel(allLabs);
+
+figure
+sgtitle('Deep Neural Network Classifier Results');
+trainTitle = ['Train (Accuracy: ', num2str(100*(1-trainError)),'%)'];
+subplot(2,2,1); confusionchart(trainCat,trainEstCat,'Title',trainTitle,...
+    'ColumnSummary','column-normalized','RowSummary','row-normalized');
+validTitle = ['Validate (Accuracy: ', num2str(100*(1-validError)),'%)'];
+subplot(2,2,2); confusionchart(valCat,valEstCat,'Title',validTitle,...
+    'ColumnSummary','column-normalized','RowSummary','row-normalized');
+testTitle = ['Test (Accuracy: ', num2str(100*(1-testError)),'%)'];
+subplot(2,2,3); confusionchart(testCat,testEstCat,'Title',testTitle,...
+    'ColumnSummary','column-normalized','RowSummary','row-normalized');
+allTitle = ['Overall (Accuracy: ', num2str(100*(1-allError)),'%)'];
+subplot(2,2,4); confusionchart(allLabs,allEst,'Title',allTitle,...
+    'ColumnSummary','column-normalized','RowSummary','row-normalized');
 
 %% Train basic (shallow) neural network
 % Generated using nprtool
@@ -47,10 +140,10 @@ net.divideParam.testInd= nTrain+nVal+1:nTrain+nVal+nTest;
 % Save the trained network
 basicNetworkResults.Network = net;
 basicNetworkResults.TrainingResults = tr;
-save('Results/basicNetworkResults_2.mat','basicNetworkResults');
+save('Results/Models/basicNetworkResults_2.mat','basicNetworkResults');
 
 %% Test the basic network
-load('Results/basicNetworkResults.mat'); % Load trained network
+load('Results/Models/basicNetworkResults_2.mat'); % Load trained network
 basicNet = basicNetworkResults.Network;
 tr = basicNetworkResults.TrainingResults;
 fprintf('\nBasic Neural Network Classifier\n')
