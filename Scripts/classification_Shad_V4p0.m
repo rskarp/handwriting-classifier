@@ -93,62 +93,74 @@ save('Data_032624.Mat','Test','Train','Val','-v7.3')
 
 % Change a hyper parameter: 
     Parameter.Name = 'MaxEpochs';
-    Parameter.Value = [20;30;40;50];
+    Parameter.Value = [50];
 
 %% Create Nueral Network 
-for ChangeParameter = 1:length(Parameter.Value)
+XTrain = horzcat(Train.HuMoments,Train.Ellispe', Train.Eccentricity' ,Train.Orientation',Train.ConvexArea',...
+        Train.Circularity',Train.Solidity',Train.Perimeter');
+YTrain = Train.Labels;
 
+XValidation = horzcat(Val.HuMoments,Val.Ellispe', Val.Eccentricity' ,Val.Orientation',Val.ConvexArea',...
+    Val.Circularity',Val.Solidity',Val.Perimeter');
+YValidation = Val.Labels;
+
+[~,numFeatures] = size(XTrain);
+numClasses = length(Classes);
+
+for ChangeParameter = 1:length(Parameter.Value)  
     % Create Network Layers: 
-     layers = [
-        featureInputLayer(15)          % Input layer for feature data with 8 features
-        fullyConnectedLayer(100)          % ReLU activation layer
-        reluLayer()  
-        fullyConnectedLayer(50) 
-        reluLayer()  
-        fullyConnectedLayer(26)        % Fully connected layer with 5 neurons
-        softmaxLayer()                % Softmax layer for classification
-        %classificationLayer()        % Classification output layer
-    ];
-     %The classificationlayer was not working, it did not want to be the output
-     %layer? 
-     %Maybe can add class weights based on letter likelyness? 
+    layers = [
+        featureInputLayer(numFeatures,Normalization="zscore")
+        fullyConnectedLayer(200)
+        batchNormalizationLayer
+        reluLayer
+        fullyConnectedLayer(100)
+        batchNormalizationLayer
+        reluLayer
+        fullyConnectedLayer(50)
+        batchNormalizationLayer
+        reluLayer
+        fullyConnectedLayer(numClasses)
+        softmaxLayer];
+    
      
     net = layerGraph(layers);
     %plot(net)
     %analyzeNetwork(net)
-    
-    XTrain = horzcat(Train.HuMoments,Train.Ellispe', Train.Eccentricity' ,Train.Orientation',Train.ConvexArea',...
-        Train.Circularity',Train.Solidity',Train.Perimeter');
-    
-    YTrain = Train.Labels;
-    
-    XValidation = horzcat(Val.HuMoments,Val.Ellispe', Val.Eccentricity' ,Val.Orientation',Val.ConvexArea',...
-        Val.Circularity',Val.Solidity',Val.Perimeter');
-    YValidation = Val.Labels;
+   
     
     
     % If you do not have GPU, comment this out: 
         XTrain = gpuArray(XTrain);
-        Options = trainingOptions('rmsprop',...
-        'ExecutionEnvironment', 'gpu', ...  
-        'MiniBatchSize', 2048, ...
-        'MaxEpochs', Parameter.Value(ChangeParameter),...
-        'ValidationData', {XValidation, YValidation'}, ...
-        'ValidationFrequency', 500, ...  % Validate every 5 epochs
-        'Verbose', true,...
-        Plots="training-progress",...
-        OutputNetwork = "best-validation-loss",...
-        InitialLearnRate = 0.01...
-        );  % Display training progress
-         
+        
+        Options = trainingOptions('adam',...
+            MaxEpochs=50,...
+            MiniBatchSize=4096, ...
+            LearnRateSchedule='piecewise',...
+            Metrics='accuracy',...
+            ValidationPatience=5,...
+            Shuffle='every-epoch',...
+            ValidationData={XValidation, YValidation'}, ...
+            ValidationFrequency=500, ...  % Validate every 500 iterations
+            Plots="training-progress",...
+            OutputNetwork = "best-validation-loss",...
+            InitialLearnRate = 0.01,...
+            ExecutionEnvironment = 'gpu');  
+
     %{
-       Else 
-        Options = trainingOptions('rmsprop',...
-        'MaxEpochs', 30,...
-        'ValidationData', {XValidation, YValidation}, ...
-        'ValidationFrequency', 5, ...  % Validate every 5 epochs
-        'Verbose', true,...  % Display training progress
-        );
+       Options = trainingOptions('adam',...
+            MaxEpochs=50,...
+            MiniBatchSize=4096, ...
+            LearnRateSchedule='piecewise',...
+            Metrics='accuracy',...
+            ValidationPatience=5,...
+            Shuffle='every-epoch',...
+            ValidationData={validationData, categorical(validationLetters)'}, ...
+            ValidationFrequency=500, ...  % Validate every 500 iterations
+            Plots="training-progress",...
+            OutputNetwork = "best-validation-loss",...
+            InitialLearnRate = 0.01...
+            'ExecutionEnvironment', 'gpu');  
     %}
        
     netTrained{ChangeParameter} = trainnet(XTrain, YTrain', layers, 'crossentropy', Options);
@@ -158,8 +170,8 @@ end
 
 %% Choose one (highlight and press f9): 
 
-    % save('Net_V3p3.mat','netTrained');
-    % load('Net_V3p3.mat');
+    % save('Net_V4p0.mat','netTrained');
+    % load('Net_V4p0.mat');
     
 %% Initial Testing
 close all
@@ -167,7 +179,7 @@ for ChangeParameter = 1:length(Parameter.Value)
     
     Result = predict(netTrained{ChangeParameter},horzcat(Test.HuMoments,Test.Ellispe', Test.Eccentricity' ,Test.Orientation',Test.ConvexArea',...
         Test.Circularity',Test.Solidity',Test.Perimeter'));
-    %Result = classify(netTrained,Data1.HuMoments((Num_Pics/2)+1:end,:));
+
     
     for i = 1:length(Result) 
         Index = find(max(Result(i,:)) == Result(i,:),1);

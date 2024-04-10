@@ -93,14 +93,14 @@ save('Data_032624.Mat','Test','Train','Val','-v7.3')
 
 % Change a hyper parameter: 
     Parameter.Name = 'MaxEpochs';
-    Parameter.Value = [20;30;40;50];
+    Parameter.Value = [50];
 
 %% Create Nueral Network 
 for ChangeParameter = 1:length(Parameter.Value)
 
     % Create Network Layers: 
      layers = [
-        featureInputLayer(15)          % Input layer for feature data with 8 features
+        featureInputLayer(8)          % Input layer for feature data with 8 features
         fullyConnectedLayer(100)          % ReLU activation layer
         reluLayer()  
         fullyConnectedLayer(50) 
@@ -117,14 +117,16 @@ for ChangeParameter = 1:length(Parameter.Value)
     %plot(net)
     %analyzeNetwork(net)
     
-    XTrain = horzcat(Train.HuMoments,Train.Ellispe', Train.Eccentricity' ,Train.Orientation',Train.ConvexArea',...
-        Train.Circularity',Train.Solidity',Train.Perimeter');
-    
+    %XTrain = horzcat(Train.HuMoments,Train.Ellispe', Train.Eccentricity' ,Train.Orientation',Train.ConvexArea',...
+    %    Train.Circularity',Train.Solidity',Train.Perimeter');
+
+    XTrain = Train.HuMoments;
     YTrain = Train.Labels;
     
-    XValidation = horzcat(Val.HuMoments,Val.Ellispe', Val.Eccentricity' ,Val.Orientation',Val.ConvexArea',...
-        Val.Circularity',Val.Solidity',Val.Perimeter');
+    %XValidation = horzcat(Val.HuMoments,Val.Ellispe', Val.Eccentricity' ,Val.Orientation',Val.ConvexArea',...
+    %    Val.Circularity',Val.Solidity',Val.Perimeter');
     YValidation = Val.Labels;
+    XValidation = Val.HuMoments;
     
     
     % If you do not have GPU, comment this out: 
@@ -158,16 +160,18 @@ end
 
 %% Choose one (highlight and press f9): 
 
-    % save('Net_V3p3.mat','netTrained');
-    % load('Net_V3p3.mat');
+    % save('Net_V3p4.mat','netTrained');
+    % load('Net_V3p4.mat');
     
 %% Initial Testing
 close all
 for ChangeParameter = 1:length(Parameter.Value)
     
-    Result = predict(netTrained{ChangeParameter},horzcat(Test.HuMoments,Test.Ellispe', Test.Eccentricity' ,Test.Orientation',Test.ConvexArea',...
-        Test.Circularity',Test.Solidity',Test.Perimeter'));
+    %Result = predict(netTrained{ChangeParameter},horzcat(Test.HuMoments,Test.Ellispe', Test.Eccentricity' ,Test.Orientation',Test.ConvexArea',...
+    %    Test.Circularity',Test.Solidity',Test.Perimeter'));
     %Result = classify(netTrained,Data1.HuMoments((Num_Pics/2)+1:end,:));
+
+    Result = predict(netTrained{ChangeParameter},Test.HuMoments);
     
     for i = 1:length(Result) 
         Index = find(max(Result(i,:)) == Result(i,:),1);
