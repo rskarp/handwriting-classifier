@@ -26,7 +26,7 @@ for i = 1:3
     Val.Data = [Val.Data data];
 end
 
-for i = 1:5
+for i = 1:17 % Make this number less if less data
     load([pnameExtractedData.train 'train_features_' num2str(i) '.mat']);
     Train.Data = [Train.Data data];
 end
@@ -49,7 +49,7 @@ for i = 1:Test.Num_Pics
     Test.Perimeter(i) = Test.Data{i}.Perimeter;
 end
 
-for i = 1:Train.Num_Pics
+for i = 1244535:Train.Num_Pics
     Train.Labels{i} = Train.Data{i}.Letter;
     Train.HuMoments(i,:) = Train.Data{i}.HuMoments;
     Train.Ellispe(i) = Train.Data{i}.MajorAxisLength / Train.Data{i}.MinorAxisLength;
@@ -122,7 +122,7 @@ YValidation = Val.Labels;
     XTrain = gpuArray(XTrain);
     Options = trainingOptions('rmsprop',...
     'ExecutionEnvironment', 'gpu', ...  
-    'MiniBatchSize', 64, ...
+    'MiniBatchSize', 128, ...
     'MaxEpochs', 10,...
     'ValidationData', {XValidation, YValidation'}, ...
     'ValidationFrequency', 500, ...  % Validate every 5 epochs
@@ -167,7 +167,7 @@ figure()
 confusionchart(Test.Labels,Result_Character)
 title('Confusion Chart -  All Image Metrics')
 
-
+save('Net_V3p0.mat','netTrained')
 
 
 
