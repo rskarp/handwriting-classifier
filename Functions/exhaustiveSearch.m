@@ -29,7 +29,7 @@ cL=nchoosek(1:NofFeatures,NumFeatComb);
 noOfCombinations=size(cL,1);
 for combs=1:noOfCombinations
     % eval(['[J]=' CostFunction '(class1(cL(combs,:),:),class2(cL(combs,:),:));']);
-    [J]=ScatterMatrices(class1(cL(combs,:),:),class2(cL(combs,:),:));
+    [J]=divergence(class1(cL(combs,:),:),class2(cL(combs,:),:));
     if J>Jmax
         Jmax=J;
         cLbest=cL(combs,:);

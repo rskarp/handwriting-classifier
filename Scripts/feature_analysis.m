@@ -63,8 +63,12 @@ normalize = 1;
 warning('off','MATLAB:singularMatrix')
 warning('off','MATLAB:nearlySingularMatrix')
 
-bestFeaturesMatrix = zeros([26 26 5]);
-bestFeaturesCounts = zeros([1 size(trainData,2)]);
+topN = 5;
+nFeatures = size(trainData,2);
+bestFeaturesCounts = zeros([1 nFeatures]);
+scalarResults = zeros([26 26 nFeatures]);
+vectorResults = zeros([26 26 topN]);
+tic;
 for c1=1:length(chars)
     for c2=c1+1:length(chars)
         % Use proper class data
@@ -85,28 +89,29 @@ for c1=1:length(chars)
             fprintf(' (%d)',p(i));
         end
         fprintf('\n');
+        scalarResults(c1,c2,:) = p;
 
         % Vector Feature Evaluation using Exhaustive Search with ScatterMatrices
         inds=sort(p,'ascend');
-        [cLbest,Jmax]=exhaustiveSearch(class1(inds,:),class2(inds,:),'ScatterMatrices',5);
+        [cLbest,Jmax]=exhaustiveSearch(class1(inds,:),class2(inds,:),'ScatterMatrices',topN);
 
         % Print the Exhaustive Search results
         ids = inds(cLbest);
-        fprintf('  Exhaustive Search -> Best of four: ');
+        fprintf('  Exhaustive Search -> Best of five: ');
         fprintf(' (%d)',ids);
         fprintf('\n');
+        vectorResults(c1,c2,:) = ids;
 
         bestFeaturesCounts(ids) = bestFeaturesCounts(ids)+1;
-
-        bestFeaturesMatrix(c1,c2,:) = ids;
     end
 end
+toc % 2.62 hours
 
 features = {'Area', 'Centroid(1)', 'Centroid(2)', 'MajorAxisLength',...
             'MinorAxisLength', 'Eccentricity', 'Orientation', 'ConvexArea',...
             'Area/ConvexArea','MajorAxisLength/MinorAxisLength',...
             'Circularity', 'Solidity', 'Perimeter', 'Hu1', 'Hu2', 'Hu3',...
             'Hu4', 'Hu5', 'Hu6', 'Hu7', 'Hu8'};
-[~,I] = maxk(bestFeaturesCounts,10);
+[~,I] = maxk(bestFeaturesCounts,length(features));
 
-top10Feats = features(I)'
+orderedFeats = features(I)'

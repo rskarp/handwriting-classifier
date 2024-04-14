@@ -25,4 +25,4 @@ N=NofPattInClass1+NofPattInClass2;
 Sw=((NofPattInClass1/N)*z1+(NofPattInClass2/N)*z2);
 classboth=[class1;class2];
 Sm=cov(classboth,1);
-J3=trace(inv(Sw)*Sm)/size(class1,2);
+J3=trace(Sw\Sm)/size(class1,2);
