@@ -43,10 +43,20 @@ for x = 1:step:N
 
 
     L = Z;
-    %Z = bwconncomp(Z);
+    cc = bwconncomp(Z);
+
+    % Combine all objects into one object
+    if cc.NumObjects > 1
+        pixels = [];
+        for i=1:cc.NumObjects
+            pixels = [pixels; cc.PixelIdxList{i}];
+        end
+        cc.NumObjects = 1;
+        cc.PixelIdxList = {pixels};
+    end
 
 
-    Q = regionprops(Z,'Area','Centroid','MajorAxisLength','MinorAxisLength','Eccentricity','Orientation','ConvexArea','Circularity',...
+    Q = regionprops(cc,'Area','Centroid','MajorAxisLength','MinorAxisLength','Eccentricity','Orientation','ConvexArea','Circularity',...
         'Solidity','Perimeter');
     
 
@@ -76,6 +86,3 @@ for x = 1:step:N
 end
 
 save test_features_rm.mat R
-
-
-
