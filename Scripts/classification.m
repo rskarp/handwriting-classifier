@@ -15,11 +15,23 @@ chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 % Convert features to matrix
 normalize = 0;
 [trainData, trainLabels, trainLetters, trainLabelMatrix] = ...
-    convertFeaturesToMatrix(trainFeatures, chars, normalize);
+    convertFeaturesToMatrix(trainFeatures, chars, normalize, 1);
 [validationData, validationLabels, validationLetters, validationLabelMatrix] = ...
-    convertFeaturesToMatrix(validationFeatures, chars, normalize);
+    convertFeaturesToMatrix(validationFeatures, chars, normalize, 0);
 [testData, testLabels, testLetters, testLabelMatrix] = ...
-    convertFeaturesToMatrix(testFeatures, chars, normalize);
+    convertFeaturesToMatrix(testFeatures, chars, normalize, 0);
+
+%% Specify which features to use
+% Select from the following options:
+% {'Area', 'Centroid(1)', 'Centroid(2)', 'MajorAxisLength',...
+%   'MinorAxisLength', 'Eccentricity', 'Orientation', 'ConvexArea',...
+%   'Area/ConvexArea','MajorAxisLength/MinorAxisLength',...
+%   'Circularity', 'Solidity', 'Perimeter', 'Hu1', 'Hu2', 'Hu3',...
+%   'Hu4', 'Hu5', 'Hu6', 'Hu7', 'Hu8'};
+featureInds = [2:7,9:21];
+trainData = trainData(:,featureInds);
+validationData = validationData(:,featureInds);
+testData = testData(:,featureInds);
 
 %% Deep Neural Network Classifier
 
@@ -29,10 +41,17 @@ numClasses = numel(unique(trainLabels));
 
 layers = [
     featureInputLayer(numFeatures,Normalization="zscore")
+    % fullyConnectedLayer(400)
+    % batchNormalizationLayer
+    % reluLayer
+    % dropoutLayer(0.2)
+    % fullyConnectedLayer(300)
+    % batchNormalizationLayer
+    % reluLayer
     fullyConnectedLayer(200)
     batchNormalizationLayer
     reluLayer
-    % dropoutLayer(0.2)
+    % dropoutLayer(0.05)
     fullyConnectedLayer(100)
     batchNormalizationLayer
     reluLayer
@@ -40,7 +59,7 @@ layers = [
     fullyConnectedLayer(50)
     batchNormalizationLayer
     reluLayer
-    dropoutLayer(0.02)
+    % dropoutLayer(0.02)
     fullyConnectedLayer(numClasses)
     softmaxLayer];
 
@@ -49,8 +68,10 @@ Options = trainingOptions('adam',...
     MaxEpochs=50,...
     MiniBatchSize=4096, ...
     LearnRateSchedule='piecewise',...
+    ... % LearnRateDropFactor=0.5,...
+    ... % LearnRateDropPeriod=2,...
     Metrics='accuracy',...
-    ValidationPatience=5,...
+    ValidationPatience=6,...
     ... % ExecutionEnvironment='parallel-cpu',...
     Shuffle='every-epoch',...
     ValidationData={validationData, categorical(validationLetters)'}, ...
@@ -122,7 +143,7 @@ t = [trainLabelMatrix' validationLabelMatrix' testLabelMatrix'];
 trainFcn = 'trainscg';  % Scaled conjugate gradient backpropagation.
 
 % Create a Pattern Recognition Network
-hiddenLayerSize = [10 5];
+hiddenLayerSize = 300;
 net = patternnet(hiddenLayerSize, trainFcn);
 
 % Setup Division of Data for Training, Validation, Testing
